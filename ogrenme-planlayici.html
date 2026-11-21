@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Öğrenme Planlayıcı</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#F2F5F4;--card:#fff;--fg:#14262B;--mute:#5B6E72;--line:#D5DEDD;--acc:#0E6B66;--accfg:#fff;--ok:#1F7A3F;--warn:#B4540A;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1A1C;--card:#172629;--fg:#E6EFEE;--mute:#98ABAE;--line:#2A3F43;--acc:#5CC8BF;--accfg:#0F1A1C;--ok:#6FD08C;--warn:#F0A25E}}
+:root[data-theme="dark"]{--bg:#0F1A1C;--card:#172629;--fg:#E6EFEE;--mute:#98ABAE;--line:#2A3F43;--acc:#5CC8BF;--accfg:#0F1A1C;--ok:#6FD08C;--warn:#F0A25E}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 Manrope,system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:640px;margin:0 auto;padding:28px 18px 60px}
+h1{font-size:1.9rem;line-height:1.15;margin:0 0 6px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.1rem;margin:0 0 10px}
+p{margin:0 0 12px}.mute{color:var(--mute)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:18px 0}
+label{display:block;font-weight:600;margin:14px 0 6px}
+select,input[type=number]{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);font:inherit}
+button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:11px 16px;cursor:pointer;background:var(--acc);color:var(--accfg)}
+button.ghost{background:transparent;color:var(--mute);border:1px solid var(--line)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
+.sum{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:600}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin:10px 0 0}
+.bar i{display:block;height:100%;background:var(--acc);transition:width .4s}
+.rail{position:relative;margin:22px 0 0;padding-left:34px}
+.rail:before{content:"";position:absolute;left:11px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.step{position:relative;margin:0 0 14px}
+.dot{position:absolute;left:-34px;top:14px;width:24px;height:24px;border-radius:50%;background:var(--card);border:2px solid var(--line);display:grid;place-items:center;font-size:.75rem;font-weight:800}
+.step.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.step.late .dot{border-color:var(--warn);color:var(--warn)}
+.step .box{margin:0;padding:14px 16px}
+.step.done .box{opacity:.65}
+.meta{font-size:.88rem;color:var(--mute)}.late .meta b{color:var(--warn)}
+.q{margin:18px 0}.q b{display:block;margin-bottom:6px}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border:1px solid var(--line);border-radius:10px;margin:6px 0;cursor:pointer}
+.opt input{margin-top:5px}
+.opt.right{border-color:var(--ok)}.opt.wrong{border-color:var(--warn)}
+.res{font-weight:800;font-size:1.1rem;margin:14px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.tag{font-size:.8rem;color:var(--mute)}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+<h1>Öğrenme Planlayıcı</h1>
+<p class="mute">Yapay zekayı öğrenmek için kişisel plan: süre hesaplanır, her modül sonunda mini test çözersin, geçemezsen takvim kayar.</p>
+<div id="app"></div>
+<p class="tag">İlerlemen yalnızca bu cihazın tarayıcısında saklanır.</p>
+</main>
+<script>
+const SAAT={"0-1":15,"0-2":50,"0-3":150,"1-2":35,"1-3":135,"2-3":100};
+const SEV=["Sıfır","Kullanıcı","Uygulayıcı","Geliştirici"];
+const MOD={1:["Temel kavramlar (LLM, token, model nedir)","Prompt yazma","Araçları kullanma (Claude, ChatGPT)"],
+2:["Python temelleri","API ile model çağırma","Küçük otomasyon projesi","Dosyayla çalışma (RAG)"],
+3:["Makine öğrenmesi temelleri","Fine-tuning","Yerel model (Ollama)","Bitirme projesi"]};
+const BANK={
+"Temel kavramlar (LLM, token, model nedir)":[["Token nedir?",["Modelin işlediği metin parçası","Şifre","Model sürümü"],0],["LLM açılımı nedir?",["Large Language Model","Linear Learning Method","Local Logic Machine"],0],["Model cevap verirken temelde ne yapar?",["İnternette arar","Sıradaki en olası token’ı tahmin eder","Hazır cevap çeker"],1]],
+"Prompt yazma":[["Hangisi daha iyi sonuç verir?",["Kısa ve belirsiz istek","Net görev + bağlam + istenen format","Sadece “yap” demek"],1],["Örnek vermek (few-shot) ne sağlar?",["Formatı daha iyi yakalamasını","Modelin hızlanmasını","Maliyetin sıfırlanmasını"],0],["Cevap yanlış çıktıysa ilk ne yapılmalı?",["Modeli değiştirmek","Prompt’u netleştirip tekrar denemek","Bilgisayarı yeniden başlatmak"],1]],
+"Araçları kullanma (Claude, ChatGPT)":[["Modelin emin görünüp uydurma bilgi vermesine ne denir?",["Hallucination","Debugging","Caching"],0],["AI’dan aldığın önemli bir bilgiyi ne yapmalısın?",["Doğrudan kullan","Güvenilir kaynaktan doğrula","Görmezden gel"],1],["Çok uzun sohbette model neyi unutabilir?",["Context penceresi dışındaki eski mesajları","Kendi adını","Dili"],0]],
+"Python temelleri":[["Hangisi bir listedir?",["{\"a\": 1}","[1, 2, 3]","(1)"],1],["Dosyayı açıp güvenle kapatmanın yolu?",["with open(...) as f:","sadece open(...)","read(...)"],0],["for i in range(3) kaç kez döner?",["2","3","4"],1]],
+"API ile model çağırma":[["API anahtarı nerede tutulmalı?",["Kodun içinde açıkça","Ortam değişkeninde","Herkese açık repoda"],1],["max_tokens neyi belirler?",["Cevabın en fazla uzunluğunu","Modelin zekâsını","İnternet hızını"],0],["Modelin önceki konuşmayı bilmesi için ne yapılır?",["Kendiliğinden hatırlar","Önceki mesajlar isteğe dahil edilir","Hiçbir şey"],1]],
+"Dosyayla çalışma (RAG)":[["RAG ne yapar?",["Modeli yeniden eğitir","İlgili belge parçalarını bulup prompt’a ekler","Dosyaları siler"],1],["Belgeler neden parçalara (chunk) bölünür?",["Aramayı ve bağlama sığdırmayı kolaylaştırmak","Dosyayı büyütmek","Şifrelemek"],0],["Embedding ne işe yarar?",["Metni anlamca karşılaştırılabilir sayı vektörüne çevirir","Metni zipler","Çeviri yapar"],0]],
+"Makine öğrenmesi temelleri":[["Overfitting nedir?",["Eğitim verisini ezberleyip yeni veride kötü olmak","Çok hızlı eğitmek","Verinin az olması"],0],["Denetimli öğrenmede veri nasıldır?",["Etiketli","Etiketsiz","Boş"],0],["Veriyi eğitim ve test diye neden ayırırız?",["Görmediği veride performansı ölçmek için","Eğitimi hızlandırmak için","Dosyayı küçültmek için"],0]],
+"Fine-tuning":[["Fine-tuning ne yapar?",["Hazır modeli kendi verinle ek eğitir","Modeli siler","İnternet bağlar"],0],["Fine-tuning’den önce genelde ne denenir?",["Prompt ve RAG (daha ucuz, hızlı)","Hiçbir şey","Modeli sıfırdan eğitmek"],0],["Fine-tuning verisinde en önemli şey?",["Çok ama kalitesiz örnek","Temiz ve tutarlı örnekler","Rastgele metin"],1]],
+"Yerel model (Ollama)":[["Yerel modelin başlıca avantajı?",["Veri bilgisayardan çıkmaz","Her zaman daha güçlüdür","Hiç donanım gerektirmez"],0],["Ollama’da modeli çalıştırma komutu?",["ollama run model_adi","ollama delete","ollama fly"],0],["Daha büyük model genelde ne ister?",["Daha fazla RAM/VRAM","Daha az bellek","Daha yavaş internet"],0]]
+};
+const KEY="ogrenme-plani-v1";
+const $=s=>document.querySelector(s);
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let plan=null;
+try{plan=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(plan))}catch(e){}}
+const iso=d=>d.toISOString().slice(0,10);
+const addDays=(s,n)=>{const d=new Date(s+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return iso(d)};
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const fmt=s=>new Date(s+"T00:00:00").toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric"});
+
+function renderForm(){
+ $("#app").innerHTML=`<div class="box"><h2>Plan oluştur</h2>
+ <label for="bas">Şu anki seviyen</label><select id="bas"><option value="0">Sıfır</option><option value="1">Kullanıcı</option><option value="2">Uygulayıcı</option></select>
+ <label for="hed">Hedef seviye</label><select id="hed"></select>
+ <label for="saat">Günde kaç saat ayırabilirsin?</label><input id="saat" type="number" min="0.5" max="8" step="0.5" value="1.5">
+ <label for="gun">Haftada kaç gün?</label><input id="gun" type="number" min="1" max="7" step="1" value="5">
+ <div class="row"><button id="go">Planı oluştur</button></div></div>`;
+ const fill=()=>{const b=+$("#bas").value;$("#hed").innerHTML=[1,2,3].filter(x=>x>b).map(x=>`<option value="${x}">${SEV[x]}</option>`).join("")};
+ $("#bas").onchange=fill;fill();const h=$("#hed");if(h.querySelector('[value="2"]'))h.value="2";
+ $("#go").onclick=()=>{
+  const bas=+$("#bas").value,hed=+$("#hed").value;
+  const saat=Math.min(8,Math.max(.5,+$("#saat").value||1.5)),gun=Math.min(7,Math.max(1,Math.round(+$("#gun").value||5)));
+  const toplam=SAAT[bas+"-"+hed],hf=saat*gun;
+  const mods=[];for(let s=bas+1;s<=hed;s++)mods.push(...MOD[s]);
+  const ms=toplam/mods.length;let gecen=0;const t0=today();
+  const items=mods.map((m,i)=>{const w=Math.max(1,Math.ceil(ms/hf));gecen+=w;return{no:i+1,modul:m,hafta:w,son:addDays(t0,gecen*7),durum:"bekliyor"}});
+  plan={bas,hed,saat,gun,toplam,items};save();render();
+ };
+}
+
+function render(){
+ if(!plan)return renderForm();
+ const t=today(),done=plan.items.filter(p=>p.durum==="tamam").length,n=plan.items.length;
+ const wk=plan.items.reduce((a,p)=>a+p.hafta,0);
+ $("#app").innerHTML=`<div class="box"><div class="sum"><span>${SEV[plan.bas]} → ${SEV[plan.hed]}</span><span>${plan.toplam} saat · ${wk} hafta</span></div>
+ <div class="bar"><i style="width:${Math.round(100*done/n)}%"></i></div>
+ <p class="meta" style="margin:8px 0 0">${done}/${n} modül tamamlandı (%${Math.round(100*done/n)})</p></div>
+ <div class="rail">${plan.items.map((p,i)=>{
+  const late=p.durum!=="tamam"&&p.son<t,cls=p.durum==="tamam"?"done":late?"late":"";
+  return `<div class="step ${cls}"><span class="dot">${p.durum==="tamam"?"✓":late?"!":p.no}</span><div class="box"><b>${esc(p.modul)}</b>
+  <div class="meta">${p.hafta} hafta · son tarih: <b>${fmt(p.son)}</b>${late?" (gecikti)":""}</div>
+  ${p.durum==="tamam"?"":`<div class="row" style="margin-top:10px"><button data-i="${i}">Bitirdim, testi çöz</button></div>`}</div></div>`}).join("")}</div>
+ <div class="row"><button class="ghost" id="reset">Planı sıfırla</button></div>`;
+ document.querySelectorAll("button[data-i]").forEach(b=>b.onclick=()=>startTest(+b.dataset.i));
+ $("#reset").onclick=()=>{if(confirm("Plan ve ilerleme silinecek. Emin misin?")){plan=null;try{localStorage.removeItem(KEY)}catch(e){}render()}};
+}
+
+function norm(s){
+ try{let d=s.dogru;if(typeof d==="string"){const k="ABC".indexOf(d.trim().toUpperCase()[0]);d=k>=0?k:parseInt(d,10)}
+  const sec=s.secenekler;
+  if(typeof s.soru!=="string"||!s.soru.trim()||!Array.isArray(sec)||sec.length!==3||!sec.every(x=>typeof x==="string"&&x.trim()))return null;
+  if(new Set(sec.map(x=>x.trim().toLowerCase())).size!==3||![0,1,2].includes(d))return null;
+  const o=[0,1,2].sort(()=>Math.random()-.5);
+  return[s.soru.trim(),o.map(i=>sec[i].trim()),o.indexOf(d)];
+ }catch(e){return null}
+}
+async function aiSorular(modul){
+ try{
+  if(!window.claude||!window.claude.use)return null;
+  const sample=await window.claude.use("sample");if(!sample)return null;
+  const v=await sample.json(`Yapay zeka eğitimi için “${modul}” modülünü yeni öğrenen biri için 3 çoktan seçmeli soru yaz. Türkçe, kısa ve net; her soruda TAM 3 seçenek ve yalnızca 1 doğru cevap olsun. Sadece şu biçimde JSON dizisi döndür: [{"soru":"...","secenekler":["...","...","..."],"dogru":0}] ("dogru" doğru seçeneğin sırasıdır: 0, 1 veya 2).`);
+  const arr=Array.isArray(v)?v:(v&&v.sorular)||[];
+  const ok=arr.map(norm).filter(Boolean);
+  return ok.length>=3?ok.slice(0,3):null;
+ }catch(e){return null}
+}
+
+async function startTest(i){
+ const p=plan.items[i];
+ if(!BANK[p.modul]){
+  $("#app").innerHTML=`<div class="box"><h2>${esc(p.modul)}</h2><p>Bu bir proje modülü. Gerçekten bitirdin mi?</p><div class="row"><button id="yes">Evet, bitirdim</button><button class="ghost" id="no">Hayır, henüz değil</button></div></div>`;
+  $("#yes").onclick=()=>finish(i,true);$("#no").onclick=()=>finish(i,false);return;
+ }
+ $("#app").innerHTML=`<div class="box"><h2>${esc(p.modul)}</h2><p class="mute">Sorular hazırlanıyor…</p></div>`;
+ let qs=await aiSorular(p.modul),kaynak="AI sorusu";
+ if(!qs){qs=BANK[p.modul];kaynak="hazır sorular"}
+ $("#app").innerHTML=`<div class="box"><h2>Mini test: ${esc(p.modul)}</h2><p class="tag">Kaynak: ${kaynak} · geçmek için 3 sorudan en az 2 doğru</p>
+ ${qs.map((q,k)=>`<div class="q"><b>${k+1}) ${esc(q[0])}</b>${q[1].map((o,j)=>`<label class="opt"><input type="radio" name="q${k}" value="${j}"><span>${"ABC"[j]}) ${esc(o)}</span></label>`).join("")}</div>`).join("")}
+ <div class="row"><button id="sub">Testi bitir</button><button class="ghost" id="cancel">Vazgeç</button></div></div>`;
+ $("#cancel").onclick=render;
+ $("#sub").onclick=()=>{
+  const ans=qs.map((q,k)=>{const r=document.querySelector(`input[name=q${k}]:checked`);return r?+r.value:-1});
+  if(ans.includes(-1)){alert("Tüm soruları cevapla.");return}
+  const dogru=ans.filter((a,k)=>a===qs[k][2]).length,gecti=dogru>=2;
+  document.querySelectorAll(".q").forEach((el,k)=>{el.querySelectorAll(".opt").forEach((o,j)=>{o.querySelector("input").disabled=true;if(j===qs[k][2])o.classList.add("right");else if(j===ans[k])o.classList.add("wrong")})});
+  $("#sub").remove();$("#cancel").remove();
+  const r=document.createElement("div");
+  r.innerHTML=`<div class="res">${dogru}/3 doğru · ${gecti?"Modülü geçtin.":"Bu sefer olmadı, modüle +1 hafta eklenecek."}</div><div class="row"><button id="ok">Devam et</button></div>`;
+  document.querySelector(".box").appendChild(r);$("#ok").onclick=()=>finish(i,gecti);
+ };
+}
+function finish(i,gecti){
+ if(gecti)plan.items[i].durum="tamam";
+ else{plan.items[i].hafta+=1;for(let k=i;k<plan.items.length;k++)plan.items[k].son=addDays(plan.items[k].son,7)}
+ save();render();
+}
+render();
+</script>
+</body>
+</html>
